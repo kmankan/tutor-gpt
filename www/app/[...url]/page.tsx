@@ -18,7 +18,11 @@ export default async function Page({
   // Join the rest of the URL parts
   const restOfUrl = params.url.slice(1).join('/');
   // Construct the full URL with proper protocol separator
+  console.log('URL parts:', params.url);
+  console.log('Protocol:', protocol);
+  console.log('Rest of URL:', restOfUrl);
   const fullUrl = `${protocol}//${restOfUrl}`;
+  console.log('Final URL:', fullUrl);
   console.log(`Processing URL: ${fullUrl}`);
   // Validate the URL starts with http or https
   if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
