@@ -34,6 +34,12 @@ const Sidebar = dynamic(() => import('@/components/sidebar'), {
 
 const URL = process.env.NEXT_PUBLIC_API_URL;
 
+// THIS url context needs to be a prop of the home page.
+interface urlContext {
+  url: string,
+  parsedUrlContent: string, // context from jina ai to be added to the conversation.
+}
+
 
 // mimic the flow of the root page.tsx except it parses the prepended site's URL and uses it as context
 // as the first item of context in the conversation, with bloom ready to dive into the context/topic
@@ -330,6 +336,8 @@ export default function ChatInterface({
     }
   };
 
+  // WHAT I ACTUALLY WANT:
+  // on the home page, check to see if I got data from the url route during redirect (??)
   // ? This will run on page load and initiate a conversation with Bloom where the first message is the parsed URL content provided with an initiator prompt
   useEffect(() => {
     if (!url || !isSubscribed || parsedURLContentHasInitialised || !messages) return;
