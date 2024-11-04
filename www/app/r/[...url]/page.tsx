@@ -1,8 +1,9 @@
-import Home from "../home";
+import Home from "@/app/home";
 import { getPromptFromURL } from "@/utils/helpers";
 
+// This page performs server-side rendering to process the URL using jina
+// and return the parsed content to the core Chat react component as input
 // ? per Next.js routing conventions on accessing dynamic route data
-
 export default async function Page({
   params,
 }: {
