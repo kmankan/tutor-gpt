@@ -44,6 +44,8 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
 
   const [userId, setUserId] = useState<string>();
   const [parsedURLContentHasInitialised, setParsedURLContentHasInitialised] = useState(false);
+  // Add new state for tracking URL-based conversation creation
+  const [urlConversationCreated, setUrlConversationCreated] = useState(false);
 
   const [isThoughtsOpenState, setIsThoughtsOpenState] =
     useState<boolean>(false);
@@ -303,55 +305,87 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
     mutateMessages(); // fetch the proper version of the response message
   }
 
+  // Separate function to create the conversation
+  async function createUrlChat() {
+    console.log('Starting createUrlChat with:', { userId, URL });
+    try {
+      const api = new API({ url: URL!, userId: userId! });
+      const conversation = await api.new();
+      console.log('Created new conversation:', conversation);
+
+      posthog?.capture('user_created_conversation');
+      setConversationId(conversation?.conversationId);
+      mutateConversations([conversation, ...(conversations || [])]);
+
+      console.log('Updated conversation state:', {
+        newConversationId: conversation?.conversationId,
+        totalConversations: (conversations?.length || 0) + 1
+      });
+
+      // Signal that conversation is created
+      setUrlConversationCreated(true);
+    } catch (error) {
+      console.error('Error in createUrlChat:', error);
+    }
+  }
+
+  // Initial useEffect to create conversation when component mounts
+  useEffect(() => {
+    if (url && !urlConversationCreated && userId) {
+      console.log('creating new chat window')
+      createUrlChat();
+    }
+  }, [url, userId]);
+
   // on the home page, check to see if I got data from the url route during redirect (??)
   // ? This will run on page load and initiate a conversation with Bloom where the first message is the parsed URL content provided with an initiator prompt
   useEffect(() => {
-    // Guard clause: only proceed if all required data is available
-    if (!url || !isSubscribed || parsedURLContentHasInitialised || !userId || !messages) {
+    console.log('Effect triggered with:', {
+      url,
+      isSubscribed,
+      parsedURLContentHasInitialised,
+      messages: !!messages,
+      userId,
+      parsedUrlContent,
+      urlConversationCreated
+    });
+
+    if (!url || !isSubscribed || parsedURLContentHasInitialised || !userId || !messages || !urlConversationCreated) {
+      console.log('Guard clause triggered, returning early. Missing:', {
+        url: !url,
+        isSubscribed: !isSubscribed,
+        parsedURLContentHasInitialised,
+        messages: !messages,
+        userId: !userId,
+        urlConversationCreated: !urlConversationCreated
+      });
       return;
     }
 
-    async function initializeUrlChat() {
+    async function handleUrlContent() {
       try {
         if (parsedUrlContent) {
-          console.log('Starting URL chat initialization with content:', parsedUrlContent);
-
-          // Prevent multiple initializations of the same URL content
+          console.log('Starting URL content handling with:', { parsedUrlContent });
           setParsedURLContentHasInitialised(true);
 
-          // Initialize API with user credentials
-          const api = new API({ url: URL!, userId: userId! });
-          console.log('Created API instance');
-
-          // Create a new conversation thread
-          const conversation = await api.new();
-          console.log('Created new conversation:', conversation);
-
-          // Update conversation state and add to conversation list
-          console.log('Setting conversation ID:', conversation?.conversationId);
-          setConversationId(conversation?.conversationId);
-          mutateConversations([conversation, ...(conversations || [])]);
-
-          // Format the initial message to the AI with the URL content
-          // This prompts the AI to acknowledge receipt and prepare for discussion
           const formattedInitialQuery = `Here's the content from ${url}:\n\n${parsedUrlContent}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
           console.log('Setting initial query to input');
           input.current!.value = formattedInitialQuery;
 
-          // Initiate the conversation with the AI
           console.log('Initiating chat');
           await chat();
         } else {
           console.log('No parsedUrlContent available');
         }
       } catch (error) {
-        console.error('Error in initializeUrlChat:', error);
+        console.error('Error in handleUrlContent:', error);
       }
     }
 
-    console.log('Calling initializeUrlChat');
-    initializeUrlChat();
-  }, [url, parsedUrlContent, isSubscribed, userId, chat]);
+    console.log('Calling handleUrlContent');
+    handleUrlContent();
+  }, [url, parsedUrlContent, isSubscribed, userId, messages, urlConversationCreated]);
+
 
   return (
     <main
