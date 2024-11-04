@@ -1,5 +1,4 @@
 'use client';
-
 import Image from 'next/image';
 import useSWR from 'swr';
 
@@ -22,11 +21,6 @@ import { API } from '@/utils/api';
 import { createClient } from '@/utils/supabase/client';
 import { Reaction } from '@/components/messagebox';
 
-import { config } from "dotenv";
-import path from 'path';
-
-config({ path: path.resolve(__dirname, "../../.env") });
-
 const Thoughts = dynamic(() => import('@/components/thoughts'), {
   ssr: false,
 });
@@ -39,17 +33,18 @@ const Sidebar = dynamic(() => import('@/components/sidebar'), {
 
 const URL = process.env.NEXT_PUBLIC_API_URL;
 
+// NEEDS NEW PROPS for 
 
-// mimic the flow of the root page.tsx except it parses the prepended site's URL and uses it as context
-// as the first item of context in the conversation, with bloom ready to dive into the context/topic
+// THIS url context needs to be a prop of the home page.
+interface urlContext {
+  url?: string,
+  parsedUrlContent?: string,
+}
 
-export default function ChatInterface({
-  url,
-  parsedUrlContent }: {
-    url: string;
-    parsedUrlContent: string
-  }) {
+export default function Home({ url, parsedUrlContent }: urlContext = {}) {
+
   const [userId, setUserId] = useState<string>();
+  const [parsedURLContentHasInitialised, setParsedURLContentHasInitialised] = useState(false);
 
   const [isThoughtsOpenState, setIsThoughtsOpenState] =
     useState<boolean>(false);
@@ -137,21 +132,6 @@ export default function ChatInterface({
       messageContainer.removeEventListener('scroll', func);
     };
   }, []);
-
-  // ? This will run on page load and initiate a conversation with Bloom where the first message is the parsed URL content provided with an initiator prompt
-  useEffect(() => {
-    if (!url) return;
-    try {
-      if (parsedUrlContent) {
-        // Format the content as a prompt
-        const formattedInitialQuery = `Here's the content from ${url}:\n\n${parsedUrlContent}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
-        input.current!.value = formattedInitialQuery;
-        chat();
-      }
-    } catch (error) {
-      console.error('Error parsing URL:', error);
-    }
-  }, [url, parsedUrlContent])
 
   const conversationsFetcher = async (userId: string) => {
     const api = new API({ url: URL!, userId });
@@ -327,15 +307,36 @@ export default function ChatInterface({
     mutateMessages(); // fetch the proper version of the response message
   }
 
+  // on the home page, check to see if I got data from the url route during redirect (??)
+  // ? This will run on page load and initiate a conversation with Bloom where the first message is the parsed URL content provided with an initiator prompt
+  useEffect(() => {
+    if (!url || !isSubscribed || parsedURLContentHasInitialised || !messages) return;
+    console.log('we have entered the useEffectHook with:', url, parsedUrlContent)
+
+    try {
+      if (parsedUrlContent) {
+        // Format the content as a prompt
+        const formattedInitialQuery = `Here's the content from ${url}:\n\n${parsedUrlContent}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
+        input.current!.value = formattedInitialQuery;
+        console.log('we got here')
+        chat();
+        console.log('but we didnt get here')
+        setParsedURLContentHasInitialised(true);
+      }
+    } catch (error) {
+      console.error('Error parsing URL:', error);
+    }
+  }, [url, parsedUrlContent, isSubscribed, parsedURLContentHasInitialised, chat])
+
   // * This function handles URL submission to the reader
   const handleUrlSubmit = async () => {
     if (!websiteUrl) return;
     setIsLoadingUrl(true);
     try {
-      const { content } = await getPromptFromURL(websiteUrl)
-      if (content) {
+      const { parsedUrlContent } = await getPromptFromURL(websiteUrl)
+      if (parsedUrlContent) {
         // Format the content as a prompt
-        const formattedContent = `Here's the content from ${websiteUrl}:\n\n${content}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
+        const formattedContent = `Here's the content from ${websiteUrl}:\n\n${parsedUrlContent}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
         input.current!.value = formattedContent;
         //chatWithContext(formattedContent, websiteUrl);
         chat();
@@ -504,3 +505,4 @@ export default function ChatInterface({
     </main>
   );
 }
+
