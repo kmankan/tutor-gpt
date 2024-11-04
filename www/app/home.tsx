@@ -15,7 +15,6 @@ import { redirect } from 'next/navigation';
 import { usePostHog } from 'posthog-js/react';
 
 import { getSubscription } from '@/utils/supabase/queries';
-import { getPromptFromURL } from '@/utils/helpers';
 
 import { API } from '@/utils/api';
 import { createClient } from '@/utils/supabase/client';
@@ -71,9 +70,6 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
   };
 
   const [isSubscribed, setIsSubscribed] = useState(false);
-
-  const [websiteUrl, setWebsiteUrl] = useState<string>('');
-  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
 
   const setIsThoughtsOpen = (
     isOpen: boolean,
@@ -328,27 +324,6 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
     }
   }, [url, parsedUrlContent, isSubscribed, parsedURLContentHasInitialised, chat])
 
-  // * This function handles URL submission to the reader
-  const handleUrlSubmit = async () => {
-    if (!websiteUrl) return;
-    setIsLoadingUrl(true);
-    try {
-      const { parsedUrlContent } = await getPromptFromURL(websiteUrl)
-      if (parsedUrlContent) {
-        // Format the content as a prompt
-        const formattedContent = `Here's the content from ${websiteUrl}:\n\n${parsedUrlContent}\n\nPlease read through this and prepare to discuss it. Once you are ready to continue the conversation, please say ONLY: 'Okay i'm ready to discuss this content with you.'`;
-        input.current!.value = formattedContent;
-        //chatWithContext(formattedContent, websiteUrl);
-        chat();
-      }
-    } catch (error) {
-      console.error('Error parsing URL:', error);
-    } finally {
-      setIsLoadingUrl(false);
-      setWebsiteUrl('');
-    }
-  };
-
   return (
     <main
       className={`flex h-[100dvh] w-screen flex-col pb-[env(keyboard-inset-height)] text-sm lg:text-base overflow-hidden relative ${isDarkMode ? 'dark' : ''
@@ -388,22 +363,6 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
             </button>
           </div>
         </nav>
-        <div className="flex gap-2 p-4 border-b border-gray-300 dark:border-gray-700">
-          <input
-            type="url"
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-            placeholder="Enter website URL..."
-            className="flex-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg border-2"
-          />
-          <button
-            onClick={handleUrlSubmit}
-            disabled={isLoadingUrl}
-            className="bg-dark-green text-neon-green rounded-lg px-4 py-2"
-          >
-            {isLoadingUrl ? 'Loading...' : 'Add Context'}
-          </button>
-        </div>
         {/* <section className="bg-neon-green text-black text-center py-4"> */}
         {/*   <p> */}
         {/*     Help inform the future of Bloom by filling out this{" "} */}
