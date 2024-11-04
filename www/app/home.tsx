@@ -327,6 +327,8 @@ export default function Home({ url, parsedUrlContent }: urlContext = {}) {
           const conversation = await api.new();
           console.log('Created new conversation:', conversation);
 
+          posthog?.capture('user_created_conversation');
+
           // Update conversation state and add to conversation list
           console.log('Setting conversation ID:', conversation?.conversationId);
           setConversationId(conversation?.conversationId);
